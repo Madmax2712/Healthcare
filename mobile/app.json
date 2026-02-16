@@ -1,0 +1,53 @@
+{
+  "name": "HealthGuard",
+  "displayName": "HealthGuard",
+  "expo": {
+    "name": "HealthGuard",
+    "slug": "healthguard",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0A2463"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.healthguard.mobile",
+      "infoPlist": {
+        "NSHealthShareUsageDescription": "HealthGuard needs access to your health data to monitor heart rate and detect anomalies.",
+        "NSHealthUpdateUsageDescription": "HealthGuard needs to write health data to keep your records updated.",
+        "NSLocationWhenInUseUsageDescription": "HealthGuard needs your location to find nearby hospitals and for emergency services.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "HealthGuard needs continuous location access during emergencies to share with emergency contacts.",
+        "NSMicrophoneUsageDescription": "HealthGuard uses the microphone for voice input with the AI assistant."
+      },
+      "entitlements": {
+        "com.apple.developer.healthkit": true,
+        "com.apple.developer.healthkit.background-delivery": true
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0A2463"
+      },
+      "package": "com.healthguard.mobile",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "CALL_PHONE",
+        "BODY_SENSORS",
+        "ACTIVITY_RECOGNITION",
+        "VIBRATE",
+        "RECORD_AUDIO"
+      ]
+    },
+    "plugins": [
+      "react-native-health"
+    ]
+  }
+}

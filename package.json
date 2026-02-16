@@ -1,0 +1,29 @@
+{
+  "name": "healthguard-platform",
+  "version": "1.0.0",
+  "description": "AI-Enhanced Emergency Healthcare Platform - Mobile App & Hospital Portal",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "mobile",
+    "portal",
+    "shared"
+  ],
+  "scripts": {
+    "backend:dev": "npm run dev --workspace=backend",
+    "backend:build": "npm run build --workspace=backend",
+    "mobile:start": "npm run start --workspace=mobile",
+    "mobile:ios": "npm run ios --workspace=mobile",
+    "mobile:android": "npm run android --workspace=mobile",
+    "portal:dev": "npm run dev --workspace=portal",
+    "portal:build": "npm run build --workspace=portal",
+    "db:migrate": "npm run migrate --workspace=backend",
+    "db:seed": "npm run seed --workspace=backend",
+    "test": "npm run test --workspaces",
+    "lint": "npm run lint --workspaces"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  }
+}

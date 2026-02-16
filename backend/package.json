@@ -1,0 +1,50 @@
+{
+  "name": "healthguard-backend",
+  "version": "1.0.0",
+  "description": "HealthGuard AI-enhanced healthcare platform backend",
+  "main": "dist/server.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "nodemon --exec ts-node src/server.ts",
+    "test": "jest --config jest.config.js",
+    "test:watch": "jest --watch",
+    "lint": "tsc --noEmit",
+    "migrate": "knex migrate:latest --knexfile src/config/database.ts",
+    "migrate:rollback": "knex migrate:rollback --knexfile src/config/database.ts",
+    "seed": "knex seed:run --knexfile src/config/database.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.30.0",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "express-rate-limit": "^7.4.0",
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "knex": "^3.1.0",
+    "node-cron": "^3.0.3",
+    "pg": "^8.13.0",
+    "socket.io": "^4.8.0",
+    "uuid": "^10.0.0",
+    "winston": "^3.14.0"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.7",
+    "@types/node": "^22.5.0",
+    "@types/node-cron": "^3.0.11",
+    "@types/uuid": "^10.0.0",
+    "jest": "^29.7.0",
+    "nodemon": "^3.1.4",
+    "ts-jest": "^29.2.5",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
