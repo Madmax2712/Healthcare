@@ -1,0 +1,128 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    @apply bg-dark-bg text-white font-sans antialiased;
+    scrollbar-width: thin;
+    scrollbar-color: #333 transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-dark-border rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-600;
+  }
+
+  input, select, textarea {
+    @apply outline-none;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-dark-card border border-dark-border rounded-2xl p-4;
+  }
+
+  .btn-primary {
+    @apply bg-brand-green text-black font-semibold px-6 py-3 rounded-full hover:bg-brand-green-dark transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply bg-dark-surface text-white font-medium px-6 py-3 rounded-full border border-dark-border hover:bg-dark-hover transition-all duration-200;
+  }
+
+  .btn-danger {
+    @apply bg-accent-red text-white font-semibold px-6 py-3 rounded-full hover:opacity-90 transition-all duration-200;
+  }
+
+  .input-field {
+    @apply bg-dark-surface border border-dark-border rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-brand-green transition-colors w-full;
+  }
+
+  .positive {
+    @apply text-brand-green;
+  }
+
+  .negative {
+    @apply text-accent-red;
+  }
+
+  .badge-buy {
+    @apply bg-brand-green/20 text-brand-green text-xs font-semibold px-2 py-0.5 rounded-full;
+  }
+
+  .badge-sell {
+    @apply bg-accent-red/20 text-accent-red text-xs font-semibold px-2 py-0.5 rounded-full;
+  }
+
+  .badge-hold {
+    @apply bg-accent-yellow/20 text-accent-yellow text-xs font-semibold px-2 py-0.5 rounded-full;
+  }
+
+  .badge-bullish {
+    @apply bg-brand-green/20 text-brand-green text-xs font-semibold px-2 py-0.5 rounded-full;
+  }
+
+  .badge-bearish {
+    @apply bg-accent-red/20 text-accent-red text-xs font-semibold px-2 py-0.5 rounded-full;
+  }
+
+  .badge-neutral {
+    @apply bg-gray-700 text-gray-300 text-xs font-semibold px-2 py-0.5 rounded-full;
+  }
+
+  .stat-label {
+    @apply text-xs text-gray-500 uppercase tracking-wider;
+  }
+
+  .stat-value {
+    @apply text-lg font-semibold;
+  }
+}
+
+/* Price ticker animation */
+.ticker-wrap {
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.ticker-inner {
+  display: inline-block;
+  animation: ticker 40s linear infinite;
+}
+
+.ticker-inner:hover {
+  animation-play-state: paused;
+}
+
+/* Glow effect for positive numbers */
+.glow-green {
+  text-shadow: 0 0 10px rgba(0, 200, 5, 0.5);
+}
+
+/* Chart tooltip */
+.recharts-tooltip-wrapper {
+  outline: none !important;
+}
+
+/* Smooth number transitions */
+.price-number {
+  transition: color 0.3s ease;
+}
