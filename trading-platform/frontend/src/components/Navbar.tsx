@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   TrendingUp, LayoutDashboard, Globe, Briefcase,
-  Newspaper, BarChart2, LogOut, User, Menu, X, Zap
+  Newspaper, BarChart2, LogOut, User, Menu, X, Zap, Target
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { useAuthStore } from '../store'
@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { path: '/markets', label: 'Markets', icon: Globe },
   { path: '/portfolio', label: 'Portfolio', icon: Briefcase },
   { path: '/predictions', label: 'AI Signals', icon: Zap },
+  { path: '/accuracy', label: 'Accuracy', icon: Target },
   { path: '/news', label: 'News', icon: Newspaper },
 ]
 

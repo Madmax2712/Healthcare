@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard'
 import Markets from './pages/Markets'
 import Portfolio from './pages/Portfolio'
 import Predictions from './pages/Predictions'
+import Accuracy from './pages/Accuracy'
 import News from './pages/News'
 import Login from './pages/Login'
 import Register from './pages/Register'
@@ -49,6 +50,7 @@ export default function App() {
         <Route path="/markets" element={<Layout><Markets /></Layout>} />
         <Route path="/portfolio" element={<Layout><Portfolio /></Layout>} />
         <Route path="/predictions" element={<Layout><Predictions /></Layout>} />
+        <Route path="/accuracy" element={<Layout><Accuracy /></Layout>} />
         <Route path="/news" element={<Layout><News /></Layout>} />
 
         <Route path="*" element={<Navigate to="/" replace />} />

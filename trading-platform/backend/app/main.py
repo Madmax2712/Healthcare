@@ -15,6 +15,7 @@ from fastapi.responses import JSONResponse
 from app.config import settings
 from app.database import init_db
 from app.routes import auth, market, trading, predictions, news
+from app.routes import backtest
 
 logging.basicConfig(
     level=logging.INFO,
@@ -139,6 +140,7 @@ app.include_router(market.router, prefix="/api")
 app.include_router(trading.router, prefix="/api")
 app.include_router(predictions.router, prefix="/api")
 app.include_router(news.router, prefix="/api")
+app.include_router(backtest.router, prefix="/api")
 
 
 @app.get("/")

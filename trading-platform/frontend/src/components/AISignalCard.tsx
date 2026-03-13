@@ -1,5 +1,5 @@
 import { clsx } from 'clsx'
-import { TrendingUp, TrendingDown, Minus, Target, Shield, Zap, BarChart2, MessageSquare } from 'lucide-react'
+import { TrendingUp, TrendingDown, Minus, Target, Shield, Zap, BarChart2, MessageSquare, CheckCircle, XCircle, Layers } from 'lucide-react'
 import type { AISignal } from '../types'
 
 interface Props {
@@ -109,6 +109,54 @@ export default function AISignalCard({ signal, compact, onTrade }: Props) {
 
       {/* Confidence */}
       <ConfidenceBar value={signal.confidence} />
+
+      {/* 7-Layer filter status */}
+      {(signal as any).layers_passed !== undefined && (
+        <div className="bg-dark-surface rounded-xl p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-400">
+              <Layers size={12} />
+              7-Layer Filter
+            </div>
+            <div className={clsx(
+              'text-xs font-bold px-2 py-0.5 rounded-full',
+              (signal as any).is_high_confidence ? 'bg-brand-green/20 text-brand-green' : 'bg-accent-yellow/20 text-accent-yellow'
+            )}>
+              {(signal as any).layers_passed}/{(signal as any).layers_total} layers passed
+            </div>
+          </div>
+          <div className="h-2 bg-dark-card rounded-full overflow-hidden">
+            <div
+              className={clsx('h-full rounded-full transition-all', (signal as any).is_high_confidence ? 'bg-brand-green' : 'bg-accent-yellow')}
+              style={{ width: `${((signal as any).layers_passed / 7) * 100}%` }}
+            />
+          </div>
+          {(signal as any).why_filtered?.length > 0 && (
+            <div className="space-y-1">
+              {((signal as any).why_filtered as string[]).slice(0, 3).map((reason: string, i: number) => (
+                <div key={i} className="flex items-center gap-1.5 text-xs text-gray-600">
+                  <XCircle size={10} className="text-accent-yellow flex-shrink-0" />
+                  {reason}
+                </div>
+              ))}
+            </div>
+          )}
+          {(signal as any).signals?.ensemble && (
+            <div className="flex items-center justify-between text-xs text-gray-500 pt-1 border-t border-dark-border">
+              <span>Ensemble ({(signal as any).signals.ensemble.buy_votes}B / {(signal as any).signals.ensemble.sell_votes}S / {(signal as any).signals.ensemble.hold_votes}H)</span>
+              <span className={clsx((signal as any).signals.ensemble.agreement >= 0.75 ? 'text-brand-green' : 'text-accent-yellow')}>
+                {Math.round((signal as any).signals.ensemble.agreement * 100)}% agree
+              </span>
+            </div>
+          )}
+          {(signal as any).regime && (
+            <div className="flex items-center justify-between text-xs text-gray-500">
+              <span>Market Regime</span>
+              <span className="text-gray-300">{(signal as any).regime}</span>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Price targets */}
       <div className="grid grid-cols-3 gap-3">
