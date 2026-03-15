@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Query, Depends
 from typing import List, Optional
 from datetime import datetime, timedelta
 import logging
+import numpy as np
 
 from app.services.market_data import fetch_history, fetch_quote
 from app.services.news_service import fetch_symbol_news, get_market_sentiment_summary
@@ -12,6 +13,21 @@ from app.models import User
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/predictions", tags=["predictions"])
+
+
+def _sanitize(obj):
+    """Recursively convert numpy types to native Python types for JSON serialization."""
+    if isinstance(obj, dict):
+        return {k: _sanitize(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_sanitize(v) for v in obj]
+    if isinstance(obj, (np.bool_,)):
+        return bool(obj)
+    if isinstance(obj, (np.integer,)):
+        return int(obj)
+    if isinstance(obj, (np.floating,)):
+        return float(obj)
+    return obj
 
 
 @router.get("/signal/{symbol}")
@@ -30,7 +46,7 @@ async def get_signal(
 
     decision = agent.analyze(symbol, market, df, news)
 
-    return {
+    return _sanitize({
         "symbol": symbol,
         "market": market,
         "action": decision.action,
@@ -54,7 +70,7 @@ async def get_signal(
         "prediction_score": decision.prediction_score,
         "signals": decision.signals,
         "timestamp": datetime.utcnow().isoformat(),
-    }
+    })
 
 
 @router.get("/bulk-signals")

@@ -28,7 +28,6 @@ newsapi-python==0.2.7
 
 # Technical Analysis
 ta==0.11.0
-pandas-ta==0.3.14b0
 
 # Auth
 python-jose[cryptography]==3.3.0

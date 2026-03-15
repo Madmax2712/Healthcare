@@ -155,6 +155,12 @@ async def fetch_global_news(limit: int = 50) -> List[Dict]:
         if isinstance(r, list):
             all_articles.extend(r)
 
+    # Fallback to mock news if no real news fetched
+    if not all_articles:
+        logger.info("No live news available, using mock news data")
+        from app.services.mock_data import MOCK_NEWS
+        all_articles = list(MOCK_NEWS)
+
     # Deduplicate by title
     seen = set()
     unique = []

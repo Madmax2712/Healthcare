@@ -40,14 +40,22 @@ export interface AISignal {
   position_size: number
   sentiment_score: number
   technical_score: number
+  prediction_score?: number
+  ensemble_agreement?: number
+  regime?: string
+  layers_passed?: number
+  layers_total?: number
+  is_high_confidence?: boolean
+  why_filtered?: string[]
   signals: {
     sentiment: {
       score: number
       label: string
       confidence: number
-      count: number
-      bullish_count: number
-      bearish_count: number
+      count?: number
+      bullish_count?: number
+      bearish_count?: number
+      passed?: boolean
     }
     technical: {
       action: string
@@ -59,14 +67,36 @@ export interface AISignal {
       indicators: Record<string, number>
       support: number
       resistance: number
+      passed?: boolean
     }
     prediction: {
       direction: string
       predicted_price: number
       change_pct: number
       confidence: number
+      passed?: boolean
     }
-    final_score: number
+    ensemble?: {
+      action: string
+      agreement: number
+      buy_votes: number
+      sell_votes: number
+      hold_votes: number
+      is_high_confidence: boolean
+      passed?: boolean
+    }
+    regime?: {
+      type: string
+      strength: number
+      signal_filter: string
+      description: string
+      passed?: boolean
+    }
+    layers_passed?: number
+    layers_total?: number
+    fused_score?: number
+    why_filtered?: string[]
+    final_score?: number
   }
   timestamp: string
 }

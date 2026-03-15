@@ -88,8 +88,15 @@ async def fetch_quote(symbol: str) -> Optional[Dict]:
     try:
         import yfinance as yf
         loop = asyncio.get_event_loop()
-        ticker = await loop.run_in_executor(None, lambda: yf.Ticker(symbol))
-        info = await loop.run_in_executor(None, lambda: ticker.info)
+
+        def _fetch_info():
+            t = yf.Ticker(symbol)
+            return t.info
+
+        info = await asyncio.wait_for(
+            loop.run_in_executor(None, _fetch_info),
+            timeout=5.0
+        )
 
         price = info.get("currentPrice") or info.get("regularMarketPrice") or info.get("price") or 0
         prev_close = info.get("previousClose") or info.get("regularMarketPreviousClose") or price
@@ -120,8 +127,12 @@ async def fetch_quote(symbol: str) -> Optional[Dict]:
         return quote
 
     except Exception as e:
-        logger.error(f"Error fetching quote for {symbol}: {e}")
-        return None
+        logger.warning(f"yfinance quote failed for {symbol}, using mock data: {type(e).__name__}")
+        from app.services.mock_data import generate_quote
+        mock = generate_quote(symbol)
+        if mock:
+            _quote_cache[symbol] = mock
+        return mock
 
 
 async def fetch_history(symbol: str, period: str = "3mo", interval: str = "1d") -> Optional[pd.DataFrame]:
@@ -139,20 +150,32 @@ async def fetch_history(symbol: str, period: str = "3mo", interval: str = "1d") 
             df = ticker.history(period=period, interval=interval)
             return df
 
-        df = await loop.run_in_executor(None, _fetch)
+        df = await asyncio.wait_for(
+            loop.run_in_executor(None, _fetch),
+            timeout=5.0
+        )
 
-        if df is None or df.empty:
-            return None
+        if df is not None and not df.empty:
+            df.columns = [c.lower() for c in df.columns]
+            df = df.dropna()
+            if not df.empty:
+                _history_cache[cache_key] = df
+                return df
 
-        df.columns = [c.lower() for c in df.columns]
-        df = df.dropna()
-
-        _history_cache[cache_key] = df
-        return df
+        # yfinance returned empty — fall through to mock data
+        raise ValueError(f"Empty data from yfinance for {symbol}")
 
     except Exception as e:
-        logger.error(f"Error fetching history for {symbol}: {e}")
-        return None
+        logger.warning(f"yfinance history failed for {symbol}, using mock data: {type(e).__name__}")
+        from app.services.mock_data import generate_ohlcv, MOCK_PRICES
+        # Determine n_bars from period
+        period_days = {"1d": 1, "5d": 5, "1mo": 22, "3mo": 66, "6mo": 132, "1y": 252, "2y": 504}
+        n = period_days.get(period, 66)
+        base = MOCK_PRICES.get(symbol, {}).get("price", 100.0)
+        df = generate_ohlcv(symbol, n_bars=n, base_price=base)
+        if df is not None:
+            _history_cache[cache_key] = df
+        return df
 
 
 async def fetch_multiple_quotes(symbols: List[str]) -> List[Dict]:
