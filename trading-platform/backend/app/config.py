@@ -3,6 +3,13 @@ from typing import List, Optional
 import os
 
 
+# Resolve a persistent DB path: prefer /app/data (Render disk mount), else local ./data/
+def _default_db_url() -> str:
+    data_dir = "/app/data" if os.path.isdir("/app") else os.path.join(os.path.dirname(__file__), "..", "..", "data")
+    os.makedirs(data_dir, exist_ok=True)
+    return f"sqlite+aiosqlite:///{os.path.abspath(data_dir)}/trading.db"
+
+
 class Settings(BaseSettings):
     APP_NAME: str = "FinanceAI Trading Platform"
     SECRET_KEY: str = "dev-secret-key-change-in-production"
@@ -16,8 +23,8 @@ class Settings(BaseSettings):
     ALPACA_SECRET_KEY: str = ""
     FINNHUB_API_KEY: str = ""     # Free at finnhub.io — real-time US stock quotes
 
-    # Database
-    DATABASE_URL: str = "sqlite+aiosqlite:///./trading.db"
+    # Database — absolute path so it never ends up in an ephemeral location
+    DATABASE_URL: str = ""
 
     # Trading
     PAPER_TRADING: bool = True
@@ -35,6 +42,10 @@ class Settings(BaseSettings):
 
     def get_allowed_origins(self) -> List[str]:
         return [o.strip() for o in self.ALLOWED_ORIGINS.split(",")]
+
+    def get_database_url(self) -> str:
+        """Return DATABASE_URL, falling back to a safe absolute path."""
+        return self.DATABASE_URL or _default_db_url()
 
     class Config:
         env_file = ".env"

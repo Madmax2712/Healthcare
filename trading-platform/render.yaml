@@ -16,10 +16,11 @@ services:
     # Environment variables — set real values in Render dashboard
     envVars:
       - key: SECRET_KEY
-        generateValue: true          # Render auto-generates a secure random key
+        generateValue: true          # Generated ONCE — never changes between redeploys
+        sync: false                  # Prevents Render from rotating it on each deploy
 
       - key: DATABASE_URL
-        value: sqlite+aiosqlite:///./data/trading.db
+        value: sqlite+aiosqlite:////app/data/trading.db
 
       - key: PAPER_TRADING
         value: "true"
