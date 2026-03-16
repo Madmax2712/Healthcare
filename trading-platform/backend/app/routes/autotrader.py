@@ -103,3 +103,15 @@ async def get_opportunities():
 async def get_live_signals():
     """Get latest AI signals from signal agent"""
     return {"signals": orchestrator.get_live_signals(20)}
+
+
+@router.get("/trades")
+async def get_agent_trades(
+    current_user: User = Depends(get_current_user),
+    limit: int = 50,
+):
+    """Get recent agent execution history for the current user"""
+    executor = orchestrator._user_executor.get(current_user.id)
+    if not executor:
+        return {"trades": []}
+    return {"trades": executor.get_execution_history(limit)}

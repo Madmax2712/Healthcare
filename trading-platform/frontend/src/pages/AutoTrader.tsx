@@ -26,7 +26,7 @@ const COLOR_CLASSES: Record<string, string> = {
 }
 
 export default function AutoTrader() {
-  const { isActive, setActive, setConfig, agentTrades } = useAutoTraderStore()
+  const { isActive, setActive, setConfig, agentTrades, addTrade } = useAutoTraderStore()
 
   const [deposit, setDeposit] = useState('10000')
   const [targetReturn, setTargetReturn] = useState('15')
@@ -48,6 +48,25 @@ export default function AutoTrader() {
     try {
       const s = await autoTraderApi.status()
       setAgentStatus(s)
+      // Seed store with execution history so trades show immediately (not only via WS)
+      const executions: any[] = s?.user_agents?.trade_executor?.recent_executions ?? []
+      const knownTs = new Set(agentTrades.map((t: any) => t.timestamp + t.symbol))
+      for (const ex of executions) {
+        const key = (ex.timestamp ?? '') + (ex.symbol ?? '')
+        if (!knownTs.has(key)) {
+          addTrade({
+            symbol: ex.symbol,
+            market: ex.market ?? 'US',
+            action: ex.action,
+            quantity: ex.quantity,
+            price: ex.price,
+            total_value: ex.total_value,
+            confidence: ex.confidence ?? 0,
+            timestamp: ex.timestamp,
+          })
+          knownTs.add(key)
+        }
+      }
     } catch { /* silent */ }
   }
 

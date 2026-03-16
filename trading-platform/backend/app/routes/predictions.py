@@ -6,6 +6,7 @@ import numpy as np
 
 from app.services.market_data import fetch_history, fetch_quote
 from app.services.news_service import fetch_symbol_news, get_market_sentiment_summary
+from app.services.live_feed import live_feed
 from app.ai.trading_agent import get_trading_agent
 from app.ai.technical_analyzer import get_technical_analyzer
 from app.routes.auth import get_current_user
@@ -46,6 +47,14 @@ async def get_signal(
 
     decision = agent.analyze(symbol, market, df, news)
 
+    # Patch current_price with live feed (decision.current_price = yesterday's close from yfinance)
+    live_quote = live_feed.get_quote(symbol)
+    live_price = live_quote["price"] if live_quote else None
+    if not live_price:
+        q = await fetch_quote(symbol)
+        live_price = q["price"] if q else None
+    current_price = live_price or decision.current_price
+
     return _sanitize({
         "symbol": symbol,
         "market": market,
@@ -56,7 +65,7 @@ async def get_signal(
         "layers_total": decision.layers_total,
         "reasoning": decision.reasoning,
         "why_filtered": decision.why_filtered,
-        "current_price": decision.current_price,
+        "current_price": current_price,
         "predicted_price": decision.predicted_price,
         "target_price": decision.target_price,
         "stop_loss": decision.stop_loss,
@@ -93,12 +102,15 @@ async def bulk_signals(
 
             if df is not None and not df.empty:
                 decision = agent.analyze(symbol, market, df, news)
+                # Use live feed price — decision.current_price is from historical df (stale)
+                live_q = live_feed.get_quote(symbol)
+                live_p = live_q["price"] if live_q else decision.current_price
                 signals.append({
                     "symbol": symbol,
                     "name": info.get("name", symbol),
                     "action": decision.action,
                     "confidence": decision.confidence,
-                    "current_price": decision.current_price,
+                    "current_price": live_p,
                     "predicted_price": decision.predicted_price,
                     "expected_return_pct": decision.expected_return_pct,
                     "sentiment_score": decision.sentiment_score,
@@ -167,12 +179,14 @@ async def top_opportunities():
                 if df is not None and not df.empty:
                     decision = agent.analyze(symbol, market, df, news)
                     if decision.action in ("BUY", "SELL") and decision.confidence >= 0.6:
+                        live_q = live_feed.get_quote(symbol)
+                        live_p = live_q["price"] if live_q else decision.current_price
                         opportunities.append({
                             "symbol": symbol,
                             "market": market,
                             "action": decision.action,
                             "confidence": decision.confidence,
-                            "current_price": decision.current_price,
+                            "current_price": live_p,
                             "target_price": decision.target_price,
                             "stop_loss": decision.stop_loss,
                             "expected_return_pct": decision.expected_return_pct,
