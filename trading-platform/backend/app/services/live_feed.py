@@ -247,8 +247,11 @@ class LiveFeedManager:
 
     async def _refresh_us_prices(self):
         try:
-            from app.services.real_data import fetch_us_stock_prices
+            from app.services.real_data import fetch_us_stock_prices, fetch_us_yfinance_prices
+            # Try Alpaca first; if empty or keys not set, fall back to yfinance
             updates = await fetch_us_stock_prices(self._alpaca_key, self._alpaca_secret)
+            if not updates:
+                updates = await fetch_us_yfinance_prices()
             for symbol, data in updates.items():
                 state = self._states.get(symbol)
                 if state and data.get("price"):
@@ -256,7 +259,7 @@ class LiveFeedManager:
                         price=data["price"],
                         change_pct=data.get("change_pct", 0.0),
                         volume=data.get("volume", 0),
-                        source="alpaca",
+                        source=data.get("source", "yfinance"),
                     )
         except Exception as e:
             logger.warning(f"US stock refresh failed: {e}")
