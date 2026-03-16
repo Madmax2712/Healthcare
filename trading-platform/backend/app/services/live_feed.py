@@ -253,10 +253,10 @@ class LiveFeedManager:
             from app.services.real_data import (
                 fetch_finnhub_prices, fetch_us_stock_prices, fetch_us_yfinance_prices
             )
-            # Priority: Finnhub (real-time) → Alpaca → yfinance (1m bars)
-            updates = await fetch_finnhub_prices(self._finnhub_key)
+            # Priority: Alpaca (registered) → Finnhub → yfinance (1m bars)
+            updates = await fetch_us_stock_prices(self._alpaca_key, self._alpaca_secret)
             if not updates:
-                updates = await fetch_us_stock_prices(self._alpaca_key, self._alpaca_secret)
+                updates = await fetch_finnhub_prices(self._finnhub_key)
             if not updates:
                 updates = await fetch_us_yfinance_prices()
             for symbol, data in updates.items():

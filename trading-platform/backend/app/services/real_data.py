@@ -141,15 +141,19 @@ async def fetch_finnhub_prices(api_key: str) -> Dict[str, Dict]:
 
 
 # ─────────────────────────────────────────────────────────────────────
-# Alpaca — US Stocks (optional override, requires free account)
+# Alpaca — US Stocks primary real-time source (free account)
+# Uses /v2/stocks/snapshots which returns latestTrade + prevDailyBar
+# in a single call — most accurate and efficient endpoint.
 # ─────────────────────────────────────────────────────────────────────
 
-ALPACA_DATA_URL = "https://data.alpaca.markets/v2/stocks/trades/latest"
-ALPACA_BARS_URL = "https://data.alpaca.markets/v2/stocks/bars/latest"
+ALPACA_SNAPSHOT_URL = "https://data.alpaca.markets/v2/stocks/snapshots"
 
 
 async def fetch_us_stock_prices(api_key: str, secret_key: str) -> Dict[str, Dict]:
-    """Alpaca IEX feed — real-time US stocks (optional, requires free account)."""
+    """
+    Real-time US stock prices from Alpaca snapshots endpoint.
+    Returns latestTrade price + prevDailyBar for accurate change%.
+    """
     if not api_key or not secret_key:
         return {}
 
@@ -157,41 +161,45 @@ async def fetch_us_stock_prices(api_key: str, secret_key: str) -> Dict[str, Dict
         "APCA-API-KEY-ID": api_key,
         "APCA-API-SECRET-KEY": secret_key,
     }
-    symbols_str = ",".join(US_SYMBOLS)
 
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.get(
-                ALPACA_DATA_URL,
+                ALPACA_SNAPSHOT_URL,
                 headers=headers,
-                params={"symbols": symbols_str, "feed": "iex"},
+                params={"symbols": ",".join(US_SYMBOLS), "feed": "iex"},
             )
             resp.raise_for_status()
-            trades_data = resp.json().get("trades", {})
-
-            bar_resp = await client.get(
-                ALPACA_BARS_URL,
-                headers=headers,
-                params={"symbols": symbols_str, "feed": "iex", "timeframe": "1Day"},
-            )
-            bar_resp.raise_for_status()
-            bars_data = bar_resp.json().get("bars", {})
+            snapshots = resp.json()
 
         result: Dict[str, Dict] = {}
-        for symbol in US_SYMBOLS:
-            trade = trades_data.get(symbol)
-            bar = bars_data.get(symbol)
-            if trade and "p" in trade:
-                price = float(trade["p"])
-                prev_close = float(bar["c"]) if bar and "c" in bar else price
+        for symbol, snap in snapshots.items():
+            try:
+                latest_trade = snap.get("latestTrade") or {}
+                daily_bar   = snap.get("dailyBar") or {}
+                prev_bar    = snap.get("prevDailyBar") or {}
+
+                price = float(latest_trade.get("p") or daily_bar.get("c") or 0)
+                if not price:
+                    continue
+
+                prev_close = float(prev_bar.get("c") or price)
                 change_pct = round(((price - prev_close) / prev_close) * 100, 2) if prev_close else 0
+
                 result[symbol] = {
                     "price": price,
                     "change_pct": change_pct,
-                    "volume": int(trade.get("s", 0)),
+                    "open":  float(daily_bar.get("o") or price),
+                    "high":  float(daily_bar.get("h") or price),
+                    "low":   float(daily_bar.get("l") or price),
+                    "prev_close": prev_close,
+                    "volume": int(daily_bar.get("v") or 0),
                     "source": "alpaca",
-                    "timestamp": trade.get("t", datetime.now(timezone.utc).isoformat()),
+                    "timestamp": latest_trade.get("t", datetime.now(timezone.utc).isoformat()),
                 }
+            except Exception:
+                continue
+
         logger.info(f"Alpaca: {len(result)} US stock prices")
         return result
     except Exception as e:
@@ -309,10 +317,10 @@ async def fetch_all_real_prices(
     # US: yfinance as guaranteed fallback, then override with Finnhub/Alpaca
     us_yf = await fetch_us_yfinance_prices()
     result.update(us_yf)
-    if isinstance(alpaca, dict) and alpaca:
-        result.update(alpaca)
     if isinstance(finnhub, dict) and finnhub:
-        result.update(finnhub)   # Finnhub wins if key is set
+        result.update(finnhub)
+    if isinstance(alpaca, dict) and alpaca:
+        result.update(alpaca)    # Alpaca wins — registered account, most accurate
 
     # Crypto
     if isinstance(crypto, dict):
