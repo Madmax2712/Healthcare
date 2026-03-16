@@ -14,8 +14,8 @@ class WebSocketService {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const host = window.location.hostname
     // Dev: backend runs on :8000; prod: same host via nginx proxy
-    const port = (typeof import.meta !== 'undefined' && (import.meta as any).env?.DEV) ? ':8000' : ''
-    const url = `${protocol}//${host}${port}/ws`
+    // In dev, Vite proxies /ws → localhost:8000; in prod same host serves it
+    const url = `${protocol}//${window.location.host}/ws`
 
     try {
       this.ws = new WebSocket(url)
