@@ -1,0 +1,51 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Render.com deployment configuration
+# One web service — Docker build, single container, port 8000
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  - type: web
+    name: financeai-trading-platform
+    runtime: docker
+    dockerfilePath: ./trading-platform/Dockerfile
+    dockerContext: ./trading-platform
+    plan: starter          # $7/month — always on (no sleep)
+    region: oregon         # Change to: frankfurt (EU), singapore (Asia)
+    branch: master
+
+    # Environment variables — set real values in Render dashboard
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true          # Render auto-generates a secure random key
+
+      - key: DATABASE_URL
+        value: sqlite+aiosqlite:///./data/trading.db
+
+      - key: PAPER_TRADING
+        value: "true"
+
+      - key: INITIAL_BALANCE
+        value: "100000.0"
+
+      - key: MAX_POSITION_SIZE
+        value: "0.10"
+
+      - key: STOP_LOSS_PCT
+        value: "0.05"
+
+      - key: TAKE_PROFIT_PCT
+        value: "0.15"
+
+      - key: DEBUG
+        value: "false"
+
+      - key: NEWS_API_KEY
+        value: ""                    # Optional: get free key at newsapi.org
+
+    # Persistent disk for SQLite database (keeps your data between deploys)
+    disk:
+      name: financeai-data
+      mountPath: /app/data
+      sizeGB: 1
+
+    healthCheckPath: /api/health
