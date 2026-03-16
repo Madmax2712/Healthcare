@@ -42,8 +42,11 @@ services:
       - key: NEWS_API_KEY
         value: ""                    # Optional: get free key at newsapi.org
 
-      # Real-time US stock prices — free Alpaca account at alpaca.markets
-      # Paper Trading > API Keys > Generate New Key
+      # Real-time US stock quotes — free key at finnhub.io (Dashboard > API Key)
+      - key: FINNHUB_API_KEY
+        value: ""                    # Set in Render dashboard
+
+      # Optional additional US stock source — free account at alpaca.markets
       - key: ALPACA_API_KEY
         value: ""                    # Set in Render dashboard
 

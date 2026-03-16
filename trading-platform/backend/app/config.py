@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     ALPHA_VANTAGE_KEY: str = ""
     ALPACA_API_KEY: str = ""
     ALPACA_SECRET_KEY: str = ""
+    FINNHUB_API_KEY: str = ""     # Free at finnhub.io — real-time US stock quotes
 
     # Database
     DATABASE_URL: str = "sqlite+aiosqlite:///./trading.db"

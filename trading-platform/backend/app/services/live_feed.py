@@ -161,6 +161,7 @@ class LiveFeedManager:
         self._running = False
         self._alpaca_key: str = ""
         self._alpaca_secret: str = ""
+        self._finnhub_key: str = ""
         self._init_states()
 
     def _init_states(self):
@@ -168,9 +169,10 @@ class LiveFeedManager:
             self._states[symbol] = TickState(symbol, info)
         logger.info(f"LiveFeed initialized with {len(self._states)} symbols (fallback prices)")
 
-    def configure(self, alpaca_key: str = "", alpaca_secret: str = ""):
+    def configure(self, alpaca_key: str = "", alpaca_secret: str = "", finnhub_key: str = ""):
         self._alpaca_key = alpaca_key
         self._alpaca_secret = alpaca_secret
+        self._finnhub_key = finnhub_key
 
     def get_quote(self, symbol: str) -> Optional[dict]:
         state = self._states.get(symbol)
@@ -212,6 +214,7 @@ class LiveFeedManager:
         try:
             from app.services.real_data import fetch_all_real_prices
             updates = await fetch_all_real_prices(
+                finnhub_key=self._finnhub_key,
                 alpaca_key=self._alpaca_key,
                 alpaca_secret=self._alpaca_secret,
             )
@@ -247,9 +250,13 @@ class LiveFeedManager:
 
     async def _refresh_us_prices(self):
         try:
-            from app.services.real_data import fetch_us_stock_prices, fetch_us_yfinance_prices
-            # Try Alpaca first; if empty or keys not set, fall back to yfinance
-            updates = await fetch_us_stock_prices(self._alpaca_key, self._alpaca_secret)
+            from app.services.real_data import (
+                fetch_finnhub_prices, fetch_us_stock_prices, fetch_us_yfinance_prices
+            )
+            # Priority: Finnhub (real-time) → Alpaca → yfinance (1m bars)
+            updates = await fetch_finnhub_prices(self._finnhub_key)
+            if not updates:
+                updates = await fetch_us_stock_prices(self._alpaca_key, self._alpaca_secret)
             if not updates:
                 updates = await fetch_us_yfinance_prices()
             for symbol, data in updates.items():

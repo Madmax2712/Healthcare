@@ -107,6 +107,7 @@ async def lifespan(app: FastAPI):
     from app.services.live_feed import live_feed
     from app.config import settings
     live_feed.configure(
+        finnhub_key=settings.FINNHUB_API_KEY,
         alpaca_key=settings.ALPACA_API_KEY,
         alpaca_secret=settings.ALPACA_SECRET_KEY,
     )
