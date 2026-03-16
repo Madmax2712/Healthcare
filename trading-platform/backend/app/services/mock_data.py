@@ -15,7 +15,7 @@ MOCK_PRICES: Dict[str, Dict] = {
     # US Stocks
     "AAPL":       {"price": 213.49, "name": "Apple Inc.",          "sector": "Technology",  "market": "US"},
     "MSFT":       {"price": 415.32, "name": "Microsoft Corp.",      "sector": "Technology",  "market": "US"},
-    "NVDA":       {"price": 875.40, "name": "NVIDIA Corp.",         "sector": "Technology",  "market": "US"},
+    "NVDA":       {"price": 183.14, "name": "NVIDIA Corp.",         "sector": "Technology",  "market": "US"},
     "TSLA":       {"price": 172.63, "name": "Tesla Inc.",           "sector": "Automotive",  "market": "US"},
     "GOOGL":      {"price": 179.25, "name": "Alphabet Inc.",        "sector": "Technology",  "market": "US"},
     "AMZN":       {"price": 198.90, "name": "Amazon.com Inc.",      "sector": "Consumer",    "market": "US"},

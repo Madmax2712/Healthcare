@@ -1,231 +1,111 @@
-import { useQuery } from '@tanstack/react-query'
-import { marketApi, aiApi, newsApi, tradingApi } from '../services/api'
-import { clsx } from 'clsx'
-import { TrendingUp, TrendingDown, Zap, Newspaper, Activity, Globe, Bitcoin } from 'lucide-react'
-import { Link } from 'react-router-dom'
-import { useAuthStore, useMarketStore } from '../store'
-import AISignalCard from '../components/AISignalCard'
-import NewsCard from '../components/NewsCard'
-import type { Quote, NewsArticle } from '../types'
-
-function StatCard({ label, value, sub, positive }: { label: string; value: string; sub?: string; positive?: boolean }) {
-  return (
-    <div className="card">
-      <p className="stat-label mb-1">{label}</p>
-      <p className={clsx('text-2xl font-bold', positive === true ? 'positive' : positive === false ? 'negative' : '')}>
-        {value}
-      </p>
-      {sub && <p className="text-xs text-gray-500 mt-0.5">{sub}</p>}
-    </div>
-  )
-}
-
-function MarketCard({ quote, market }: { quote: Quote; market: string }) {
-  const isPositive = quote.change_pct >= 0
-  return (
-    <Link
-      to={`/markets?symbol=${quote.symbol}&market=${market}`}
-      className="flex items-center justify-between p-3 rounded-xl bg-dark-surface hover:bg-dark-hover border border-transparent hover:border-brand-green/20 transition-all"
-    >
-      <div>
-        <p className="text-sm font-semibold">{quote.symbol.replace('.NS', '').replace('-USD', '')}</p>
-        <p className="text-xs text-gray-500">{quote.name}</p>
-      </div>
-      <div className="text-right">
-        <p className="font-mono text-sm">${quote.price?.toFixed(2) ?? '—'}</p>
-        <p className={clsx('text-xs flex items-center justify-end gap-0.5', isPositive ? 'positive' : 'negative')}>
-          {isPositive ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
-          {isPositive ? '+' : ''}{quote.change_pct?.toFixed(2)}%
-        </p>
-      </div>
-    </Link>
-  )
-}
+import { useEffect, useState } from 'react'
+import { Activity, TrendingUp, TrendingDown, Zap, RefreshCw } from 'lucide-react'
+import { useMarketStore, useAutoTraderStore } from '../store'
+import LiveCandleChart from '../components/LiveCandleChart'
+import QuickTradePanel from '../components/QuickTradePanel'
+import WatchlistSidebar from '../components/WatchlistSidebar'
+import GoalProgressCard from '../components/GoalProgressCard'
+import AgentLogFeed from '../components/AgentLogFeed'
+import { autoTraderApi } from '../services/api'
 
 export default function Dashboard() {
-  const { user } = useAuthStore()
-  const { liveQuotes } = useMarketStore()
+  const { liveQuotes, selectedSymbol } = useMarketStore()
+  const { opportunities, setOpportunities, isActive } = useAutoTraderStore()
+  const [loadingOpps, setLoadingOpps] = useState(false)
 
-  const { data: overview } = useQuery({
-    queryKey: ['market-overview'],
-    queryFn: marketApi.overview,
-    refetchInterval: 60_000,
-  })
+  const loadOpportunities = async () => {
+    setLoadingOpps(true)
+    try {
+      const res = await autoTraderApi.opportunities()
+      setOpportunities(res.opportunities || [])
+    } catch { /* silent */ }
+    finally { setLoadingOpps(false) }
+  }
 
-  const { data: sentiment } = useQuery({
-    queryKey: ['market-sentiment'],
-    queryFn: aiApi.marketSentiment,
-    refetchInterval: 300_000,
-  })
-
-  const { data: opportunities = [] } = useQuery({
-    queryKey: ['top-opportunities'],
-    queryFn: aiApi.topOpportunities,
-    staleTime: 300_000,
-  })
-
-  const { data: news = [] } = useQuery({
-    queryKey: ['news-global'],
-    queryFn: () => newsApi.global(8),
-    refetchInterval: 300_000,
-  })
-
-  const { data: portfolio } = useQuery({
-    queryKey: ['portfolio'],
-    queryFn: tradingApi.portfolio,
-    enabled: !!user,
-    refetchInterval: 60_000,
-  })
-
-  const sentimentColor = sentiment?.label === 'BULLISH' ? 'text-brand-green' :
-    sentiment?.label === 'BEARISH' ? 'text-accent-red' : 'text-accent-yellow'
+  useEffect(() => {
+    loadOpportunities()
+    const id = setInterval(loadOpportunities, 15_000)
+    return () => clearInterval(id)
+  }, [])
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">
-            {user ? `Welcome back, ${user.username} 👋` : 'Global Markets Dashboard'}
-          </h1>
-          <p className="text-gray-500 text-sm mt-0.5">
-            AI-powered insights across US, India & Crypto markets
-          </p>
-        </div>
-        {sentiment && (
-          <div className="text-right">
-            <p className="text-xs text-gray-500">Market Mood</p>
-            <p className={clsx('font-bold text-lg', sentimentColor)}>{sentiment.label}</p>
-            <p className="text-xs text-gray-600">{Math.round(sentiment.confidence * 100)}% confidence</p>
-          </div>
-        )}
-      </div>
+    <div className="flex gap-0 overflow-hidden" style={{ height: 'calc(100vh - 96px)' }}>
+      {/* Left: Watchlist */}
+      <WatchlistSidebar />
 
-      {/* Portfolio stats (if logged in) */}
-      {portfolio && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <StatCard
-            label="Portfolio Value"
-            value={`$${portfolio.total_value?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-          />
-          <StatCard
-            label="Total P&L"
-            value={`${portfolio.total_pnl >= 0 ? '+' : ''}$${portfolio.total_pnl?.toFixed(2)}`}
-            sub={`${portfolio.total_pnl_pct >= 0 ? '+' : ''}${portfolio.total_pnl_pct?.toFixed(2)}%`}
-            positive={portfolio.total_pnl >= 0}
-          />
-          <StatCard label="Cash" value={`$${portfolio.cash_balance?.toFixed(2)}`} />
-          <StatCard label="Positions" value={String(portfolio.positions_count)} />
+      {/* Center: Chart + Opportunities */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Live chart */}
+        <div className="flex overflow-hidden" style={{ height: '60%' }}>
+          <LiveCandleChart />
         </div>
-      )}
 
-      {/* Market overview + top opportunities */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Markets */}
-        <div className="lg:col-span-2 space-y-4">
-          {/* US Market */}
-          <div className="card">
-            <div className="flex items-center gap-2 mb-3">
-              <Activity size={16} className="text-accent-blue" />
-              <h2 className="font-semibold text-sm">US Market</h2>
+        {/* Bottom: Opportunities + Agent Log */}
+        <div className="border-t border-[#21262d] flex overflow-hidden" style={{ height: '40%' }}>
+          {/* Scanner Opportunities */}
+          <div className="w-1/2 border-r border-[#21262d] flex flex-col">
+            <div className="flex items-center justify-between px-3 py-2 border-b border-[#21262d]">
+              <span className="text-xs font-semibold text-gray-400 flex items-center gap-2">
+                <Activity className="w-3 h-3 text-purple-400" /> Scanner Opportunities
+              </span>
+              <button onClick={loadOpportunities} disabled={loadingOpps} className="text-gray-500 hover:text-white">
+                <RefreshCw className={`w-3 h-3 ${loadingOpps ? 'animate-spin' : ''}`} />
+              </button>
             </div>
-            <div className="space-y-1">
-              {(overview?.US || []).map((q: Quote) => (
-                <MarketCard key={q.symbol} quote={q} market="US" />
-              ))}
-              {(!overview?.US?.length) && (
-                <p className="text-gray-600 text-sm text-center py-4">Loading market data...</p>
+            <div className="overflow-y-auto flex-1 p-1.5 space-y-1">
+              {opportunities.length === 0 ? (
+                <p className="text-xs text-gray-600 text-center py-4">Scanning market...</p>
+              ) : (
+                opportunities.slice(0, 8).map((opp: any) => {
+                  const up = opp.direction === 'BULLISH'
+                  return (
+                    <div
+                      key={opp.symbol}
+                      onClick={() => useMarketStore.getState().setSelectedSymbol(opp.symbol)}
+                      className="flex items-center justify-between px-2.5 py-1.5 bg-[#161b22] hover:bg-[#21262d] rounded cursor-pointer transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${up ? 'bg-green-400' : 'bg-red-400'}`} />
+                        <span className="text-xs font-mono font-semibold text-white">
+                          {opp.symbol?.replace('.NS', '').replace('-USD', '')}
+                        </span>
+                        <span className={`text-xs ${up ? 'text-green-400' : 'text-red-400'}`}>
+                          {(opp.change_pct ?? 0) >= 0 ? '+' : ''}{(opp.change_pct ?? 0).toFixed(2)}%
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-500">str={opp.signal_strength?.toFixed(1)}</span>
+                        <span className={`text-xs px-1.5 py-0.5 rounded ${
+                          up ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
+                        }`}>{up ? 'BULL' : 'BEAR'}</span>
+                      </div>
+                    </div>
+                  )
+                })
               )}
             </div>
           </div>
 
-          {/* India + Crypto row */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="card">
-              <div className="flex items-center gap-2 mb-3">
-                <Globe size={16} className="text-accent-yellow" />
-                <h2 className="font-semibold text-sm">India Market</h2>
-              </div>
-              <div className="space-y-1">
-                {(overview?.INDIA || []).map((q: Quote) => (
-                  <MarketCard key={q.symbol} quote={q} market="INDIA" />
-                ))}
-              </div>
+          {/* Agent Log */}
+          <div className="w-1/2 flex flex-col">
+            <div className="flex items-center gap-2 px-3 py-2 border-b border-[#21262d]">
+              <span className="text-xs font-semibold text-gray-400 flex items-center gap-2">
+                <Zap className="w-3 h-3 text-blue-400" /> Agent Activity
+              </span>
+              {isActive && <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse ml-auto" />}
             </div>
-            <div className="card">
-              <div className="flex items-center gap-2 mb-3">
-                <Bitcoin size={16} className="text-accent-yellow" />
-                <h2 className="font-semibold text-sm">Crypto</h2>
-              </div>
-              <div className="space-y-1">
-                {(overview?.CRYPTO || []).map((q: Quote) => (
-                  <MarketCard key={q.symbol} quote={q} market="CRYPTO" />
-                ))}
-              </div>
+            <div className="flex-1 overflow-hidden p-1.5">
+              <AgentLogFeed maxHeight={180} />
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Right sidebar */}
-        <div className="space-y-4">
-          {/* Top AI opportunity */}
-          {opportunities[0] && (
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <Zap size={15} className="text-brand-green" />
-                <h2 className="font-semibold text-sm">Top AI Opportunity</h2>
-              </div>
-              <div className="card border-brand-green/30">
-                <div className="flex items-center justify-between mb-2">
-                  <div>
-                    <p className="font-bold">{opportunities[0].symbol}</p>
-                    <p className="text-xs text-gray-500">{opportunities[0].market}</p>
-                  </div>
-                  <span className={clsx(
-                    'text-sm font-semibold px-3 py-1 rounded-full',
-                    opportunities[0].action === 'BUY' ? 'badge-buy' : 'badge-sell'
-                  )}>
-                    {opportunities[0].action}
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div>
-                    <span className="text-gray-500">Confidence</span>
-                    <p className="font-semibold">{Math.round(opportunities[0].confidence * 100)}%</p>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Expected Return</span>
-                    <p className={clsx('font-semibold', opportunities[0].expected_return_pct >= 0 ? 'positive' : 'negative')}>
-                      {opportunities[0].expected_return_pct >= 0 ? '+' : ''}{opportunities[0].expected_return_pct?.toFixed(2)}%
-                    </p>
-                  </div>
-                </div>
-                <Link to="/predictions" className="block mt-3 text-center text-xs text-brand-green hover:underline">
-                  View all signals →
-                </Link>
-              </div>
-            </div>
-          )}
-
-          {/* News */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <Newspaper size={15} className="text-gray-400" />
-                <h2 className="font-semibold text-sm">Latest News</h2>
-              </div>
-              <Link to="/news" className="text-xs text-gray-500 hover:text-brand-green transition-colors">
-                View all →
-              </Link>
-            </div>
-            <div className="card divide-y divide-dark-border p-0 overflow-hidden">
-              {news.slice(0, 5).map((a: NewsArticle, i: number) => (
-                <div key={i} className="px-4">
-                  <NewsCard article={a} compact />
-                </div>
-              ))}
-            </div>
-          </div>
+      {/* Right: Trade panel + Goal */}
+      <div className="flex flex-col border-l border-[#21262d]">
+        <QuickTradePanel />
+        <div className="p-3 border-t border-[#21262d]">
+          <GoalProgressCard />
         </div>
       </div>
     </div>

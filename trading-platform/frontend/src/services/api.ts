@@ -71,6 +71,20 @@ export const tradingApi = {
   refreshPrices: () => api.post('/trading/refresh-prices').then(r => r.data),
 }
 
+// Auto-Trader
+export const autoTraderApi = {
+  start: (config: {
+    deposit: number
+    target_return_pct: number
+    days_to_goal: number
+    risk_tolerance: string
+  }) => api.post('/autotrader/start', config).then(r => r.data),
+  stop: () => api.post('/autotrader/stop').then(r => r.data),
+  status: () => api.get('/autotrader/status').then(r => r.data),
+  opportunities: () => api.get('/autotrader/opportunities').then(r => r.data),
+  signals: () => api.get('/autotrader/signals').then(r => r.data),
+}
+
 // Auth
 export const authApi = {
   login: (username: string, password: string) => {

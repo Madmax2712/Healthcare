@@ -1,19 +1,24 @@
 export interface Quote {
   symbol: string
   name: string
-  market: 'US' | 'INDIA' | 'CRYPTO'
+  market: 'US' | 'INDIA' | 'CRYPTO' | string
   sector: string
   price: number
+  open?: number
+  high?: number
+  low?: number
   change: number
   change_pct: number
   volume: number
-  market_cap: number
+  market_cap?: number
   pe_ratio?: number
   high_52w?: number
   low_52w?: number
   avg_volume?: number
-  currency: string
+  prev_close?: number
+  currency?: string
   timestamp: string
+  tick?: number
 }
 
 export interface CandleData {

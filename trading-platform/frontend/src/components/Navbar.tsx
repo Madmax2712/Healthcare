@@ -2,17 +2,17 @@ import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   TrendingUp, LayoutDashboard, Globe, Briefcase,
-  Newspaper, BarChart2, LogOut, User, Menu, X, Zap, Target
+  Newspaper, BarChart2, LogOut, User, Menu, X, Zap, Target, Bot
 } from 'lucide-react'
 import { clsx } from 'clsx'
-import { useAuthStore } from '../store'
+import { useAuthStore, useAutoTraderStore } from '../store'
 
 const NAV_ITEMS = [
-  { path: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/', label: 'Trade', icon: LayoutDashboard },
+  { path: '/autotrader', label: 'AutoTrader', icon: Bot },
   { path: '/markets', label: 'Markets', icon: Globe },
   { path: '/portfolio', label: 'Portfolio', icon: Briefcase },
   { path: '/predictions', label: 'AI Signals', icon: Zap },
-  { path: '/accuracy', label: 'Accuracy', icon: Target },
   { path: '/news', label: 'News', icon: Newspaper },
 ]
 
@@ -20,6 +20,7 @@ export default function Navbar() {
   const location = useLocation()
   const navigate = useNavigate()
   const { user, logout } = useAuthStore()
+  const isAutoTrading = useAutoTraderStore((s) => s.isActive)
   const [mobileOpen, setMobileOpen] = useState(false)
 
   const handleLogout = () => {
@@ -42,21 +43,27 @@ export default function Navbar() {
 
         {/* Desktop Nav */}
         <div className="hidden md:flex items-center gap-1">
-          {NAV_ITEMS.map(({ path, label, icon: Icon }) => (
-            <Link
-              key={path}
-              to={path}
-              className={clsx(
-                'flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all',
-                location.pathname === path
-                  ? 'bg-brand-green/15 text-brand-green'
-                  : 'text-gray-400 hover:text-white hover:bg-dark-hover'
-              )}
-            >
-              <Icon size={16} />
-              {label}
-            </Link>
-          ))}
+          {NAV_ITEMS.map(({ path, label, icon: Icon }) => {
+            const isAutoTraderNav = path === '/autotrader'
+            return (
+              <Link
+                key={path}
+                to={path}
+                className={clsx(
+                  'flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all relative',
+                  location.pathname === path
+                    ? 'bg-brand-green/15 text-brand-green'
+                    : 'text-gray-400 hover:text-white hover:bg-dark-hover'
+                )}
+              >
+                <Icon size={16} />
+                {label}
+                {isAutoTraderNav && isAutoTrading && (
+                  <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                )}
+              </Link>
+            )
+          })}
         </div>
 
         {/* Right side */}
