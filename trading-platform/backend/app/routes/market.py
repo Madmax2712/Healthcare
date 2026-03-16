@@ -86,3 +86,20 @@ async def screener(
 
     quotes.sort(key=lambda x: abs(x.get("change_pct", 0)), reverse=True)
     return quotes
+
+
+@router.get("/data-sources")
+async def data_sources():
+    """Show which real-time data source is active for each symbol (debug endpoint)."""
+    from app.services.live_feed import live_feed
+    from collections import Counter
+    sources = {}
+    counts: Counter = Counter()
+    for symbol, state in live_feed._states.items():
+        src = state.data_source
+        sources[symbol] = {"source": src, "real_price": state.real_price}
+        counts[src] += 1
+    return {
+        "summary": dict(counts),
+        "symbols": sources,
+    }

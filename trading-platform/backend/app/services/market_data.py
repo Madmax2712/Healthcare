@@ -12,8 +12,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Cache market data for 1 minute
-_quote_cache = TTLCache(maxsize=500, ttl=60)
+# Quote cache: 10s TTL (live_feed refreshes real prices faster than this)
+_quote_cache = TTLCache(maxsize=500, ttl=10)
 _history_cache = TTLCache(maxsize=200, ttl=300)
 
 
@@ -81,25 +81,65 @@ def _get_symbol_info(symbol: str) -> Dict:
 
 
 async def fetch_quote(symbol: str) -> Optional[Dict]:
-    """Fetch real-time quote for a symbol"""
+    """Fetch real-time quote for a symbol.
+
+    Priority:
+    1. live_feed (already seeded from CoinGecko / Alpaca / yfinance, refreshed continuously)
+    2. yfinance direct call (fallback for symbols not in live_feed)
+    3. mock data (last resort)
+    """
     if symbol in _quote_cache:
         return _quote_cache[symbol]
 
+    # ── 1. Try live_feed first (fastest — no network call needed) ──────────
+    try:
+        from app.services.live_feed import live_feed
+        tick = live_feed.get_quote(symbol)
+        if tick and tick.get("real_price", 0) > 0:
+            symbol_info = _get_symbol_info(symbol)
+            quote = {
+                "symbol": symbol,
+                "name": tick.get("name", symbol_info.get("name", symbol)),
+                "market": tick.get("market", symbol_info.get("market", "UNKNOWN")),
+                "sector": tick.get("sector", symbol_info.get("sector", "Unknown")),
+                "price": tick["real_price"],
+                "change": tick.get("change", 0),
+                "change_pct": tick.get("change_pct", 0),
+                "volume": tick.get("volume", 0),
+                "open": tick.get("open", tick["real_price"]),
+                "high": tick.get("high", tick["real_price"]),
+                "low": tick.get("low", tick["real_price"]),
+                "prev_close": tick.get("prev_close", tick["real_price"]),
+                "market_cap": 0,
+                "pe_ratio": None,
+                "high_52w": None,
+                "low_52w": None,
+                "avg_volume": 0,
+                "currency": "USD",
+                "data_source": tick.get("data_source", "live_feed"),
+                "timestamp": tick.get("timestamp", datetime.utcnow().isoformat()),
+            }
+            _quote_cache[symbol] = quote
+            return quote
+    except Exception as e:
+        logger.debug(f"live_feed quote unavailable for {symbol}: {e}")
+
+    # ── 2. yfinance fallback ───────────────────────────────────────────────
     try:
         import yfinance as yf
         loop = asyncio.get_event_loop()
 
         def _fetch_info():
             t = yf.Ticker(symbol)
-            return t.info
+            return t.fast_info
 
         info = await asyncio.wait_for(
             loop.run_in_executor(None, _fetch_info),
-            timeout=5.0
+            timeout=8.0
         )
 
-        price = info.get("currentPrice") or info.get("regularMarketPrice") or info.get("price") or 0
-        prev_close = info.get("previousClose") or info.get("regularMarketPreviousClose") or price
+        price = getattr(info, "last_price", None) or getattr(info, "regular_market_price", None) or 0
+        prev_close = getattr(info, "previous_close", None) or price
         change = price - prev_close if price and prev_close else 0
         change_pct = (change / prev_close * 100) if prev_close else 0
 
@@ -107,19 +147,20 @@ async def fetch_quote(symbol: str) -> Optional[Dict]:
 
         quote = {
             "symbol": symbol,
-            "name": info.get("longName") or info.get("shortName") or symbol_info.get("name", symbol),
+            "name": symbol_info.get("name", symbol),
             "market": symbol_info.get("market", "UNKNOWN"),
-            "sector": symbol_info.get("sector", info.get("sector", "Unknown")),
+            "sector": symbol_info.get("sector", "Unknown"),
             "price": round(float(price), 4) if price else 0,
             "change": round(float(change), 4),
             "change_pct": round(float(change_pct), 2),
-            "volume": info.get("regularMarketVolume", 0) or info.get("volume", 0),
-            "market_cap": info.get("marketCap", 0),
-            "pe_ratio": info.get("trailingPE", None),
-            "high_52w": info.get("fiftyTwoWeekHigh", None),
-            "low_52w": info.get("fiftyTwoWeekLow", None),
-            "avg_volume": info.get("averageVolume", 0),
-            "currency": info.get("currency", "USD"),
+            "volume": int(getattr(info, "three_month_average_volume", 0) or 0),
+            "market_cap": int(getattr(info, "market_cap", 0) or 0),
+            "pe_ratio": None,
+            "high_52w": getattr(info, "year_high", None),
+            "low_52w": getattr(info, "year_low", None),
+            "avg_volume": 0,
+            "currency": getattr(info, "currency", "USD"),
+            "data_source": "yfinance",
             "timestamp": datetime.utcnow().isoformat(),
         }
 
@@ -127,12 +168,15 @@ async def fetch_quote(symbol: str) -> Optional[Dict]:
         return quote
 
     except Exception as e:
-        logger.warning(f"yfinance quote failed for {symbol}, using mock data: {type(e).__name__}")
-        from app.services.mock_data import generate_quote
-        mock = generate_quote(symbol)
-        if mock:
-            _quote_cache[symbol] = mock
-        return mock
+        logger.warning(f"yfinance quote failed for {symbol}: {type(e).__name__}")
+
+    # ── 3. Mock data last resort ───────────────────────────────────────────
+    from app.services.mock_data import generate_quote
+    mock = generate_quote(symbol)
+    if mock:
+        mock["data_source"] = "mock"
+        _quote_cache[symbol] = mock
+    return mock
 
 
 async def fetch_history(symbol: str, period: str = "3mo", interval: str = "1d") -> Optional[pd.DataFrame]:
