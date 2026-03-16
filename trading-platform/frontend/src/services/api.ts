@@ -83,6 +83,8 @@ export const autoTraderApi = {
   status: () => api.get('/autotrader/status').then(r => r.data),
   opportunities: () => api.get('/autotrader/opportunities').then(r => r.data),
   signals: () => api.get('/autotrader/signals').then(r => r.data),
+  liveSignals: () => api.get('/autotrader/live-signals').then(r => r.data),
+  trades: (limit = 50) => api.get(`/autotrader/trades?limit=${limit}`).then(r => r.data),
 }
 
 // Auth
