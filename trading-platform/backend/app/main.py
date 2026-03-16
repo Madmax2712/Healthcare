@@ -5,12 +5,16 @@ Upgraded: 1-second live feed, multi-agent autonomous trading, WebSocket streamin
 import asyncio
 import json
 import logging
+import os
 from contextlib import asynccontextmanager
 from datetime import datetime
+from pathlib import Path
 from typing import Dict, Set
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 from app.config import settings
 from app.database import init_db, AsyncSessionLocal
@@ -137,13 +141,13 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.get_allowed_origins(),
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Routes
+# API Routes — all registered BEFORE the SPA catch-all
 app.include_router(auth.router, prefix="/api")
 app.include_router(market.router, prefix="/api")
 app.include_router(trading.router, prefix="/api")
@@ -151,18 +155,6 @@ app.include_router(predictions.router, prefix="/api")
 app.include_router(news.router, prefix="/api")
 app.include_router(backtest.router, prefix="/api")
 app.include_router(autotrader.router, prefix="/api")
-
-
-@app.get("/")
-async def root():
-    return {
-        "app": "FinanceAI Trading Platform",
-        "version": "2.0.0",
-        "status": "running",
-        "live_feed": "1-second ticks",
-        "agents": ["market_scanner", "signal_agent", "risk_agent", "trade_executor", "position_monitor", "goal_agent"],
-        "docs": "/api/docs",
-    }
 
 
 @app.get("/api/health")
@@ -176,6 +168,43 @@ async def health():
         "live_feed_symbols": len(live_feed._states),
         "autotrading_users": list(orchestrator._autotrading_users),
     }
+
+
+# ── Serve React SPA ───────────────────────────────────────────────────
+FRONTEND_DIST = Path(__file__).parent.parent.parent / "frontend" / "dist"
+
+if FRONTEND_DIST.exists():
+    # Serve static assets (JS, CSS, images)
+    app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIST / "assets")), name="assets")
+
+    @app.get("/")
+    async def serve_spa_root():
+        return FileResponse(str(FRONTEND_DIST / "index.html"))
+
+    # SPA catch-all — any unknown path returns index.html for React Router
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        # Don't intercept API or WS routes
+        if full_path.startswith("api/") or full_path.startswith("ws"):
+            from fastapi import HTTPException
+            raise HTTPException(status_code=404)
+        file_path = FRONTEND_DIST / full_path
+        if file_path.exists() and file_path.is_file():
+            return FileResponse(str(file_path))
+        return FileResponse(str(FRONTEND_DIST / "index.html"))
+
+else:
+    logger.warning(f"Frontend dist not found at {FRONTEND_DIST} — serving API only")
+
+    @app.get("/")
+    async def root():
+        return {
+            "app": "FinanceAI Trading Platform",
+            "version": "2.0.0",
+            "status": "running",
+            "note": "Run 'npm run build' in frontend/ to enable the UI",
+            "docs": "/api/docs",
+        }
 
 
 # ──────────────────────────────────────────────────────────────────────
