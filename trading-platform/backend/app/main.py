@@ -103,8 +103,13 @@ async def lifespan(app: FastAPI):
     await init_db()
     logger.info("Database initialized")
 
-    # Start live feed (1-second tick)
+    # Start live feed with real market data
     from app.services.live_feed import live_feed
+    from app.config import settings
+    live_feed.configure(
+        alpaca_key=settings.ALPACA_API_KEY,
+        alpaca_secret=settings.ALPACA_SECRET_KEY,
+    )
     live_feed.add_callback(on_tick)
     await live_feed.start()
     logger.info("Live feed started (1-second ticks)")

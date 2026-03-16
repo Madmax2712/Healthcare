@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     # API Keys
     NEWS_API_KEY: str = ""
     ALPHA_VANTAGE_KEY: str = ""
+    ALPACA_API_KEY: str = ""
+    ALPACA_SECRET_KEY: str = ""
 
     # Database
     DATABASE_URL: str = "sqlite+aiosqlite:///./trading.db"

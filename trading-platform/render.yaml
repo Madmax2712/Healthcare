@@ -42,6 +42,14 @@ services:
       - key: NEWS_API_KEY
         value: ""                    # Optional: get free key at newsapi.org
 
+      # Real-time US stock prices — free Alpaca account at alpaca.markets
+      # Paper Trading > API Keys > Generate New Key
+      - key: ALPACA_API_KEY
+        value: ""                    # Set in Render dashboard
+
+      - key: ALPACA_SECRET_KEY
+        value: ""                    # Set in Render dashboard
+
     # Persistent disk for SQLite database (keeps your data between deploys)
     disk:
       name: financeai-data
