@@ -78,6 +78,9 @@ async def get_signal(
         "technical_score": decision.technical_score,
         "prediction_score": decision.prediction_score,
         "signals": decision.signals,
+        "hold_period_days": decision.hold_period_days,
+        "entry_date": decision.entry_date,
+        "exit_date": decision.exit_date,
         "timestamp": datetime.utcnow().isoformat(),
     })
 

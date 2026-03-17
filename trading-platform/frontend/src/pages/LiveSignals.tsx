@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { clsx } from 'clsx'
 import {
   Zap, TrendingUp, TrendingDown, RefreshCw, Clock,
-  Target, Shield, BarChart2, AlertCircle, ChevronDown, ChevronUp
+  Target, Shield, BarChart2, AlertCircle, ChevronDown, ChevronUp, Calendar
 } from 'lucide-react'
 import { autoTraderApi, marketApi } from '../services/api'
 import { useMarketStore } from '../store'
@@ -95,6 +95,22 @@ function SignalRow({ sig, livePrice }: { sig: any; livePrice?: number }) {
           {sig.risk_reward ? `${sig.risk_reward?.toFixed(1)}:1` : '—'}
         </td>
 
+        {/* Hold period */}
+        <td className="px-4 py-3 text-center">
+          {sig.hold_days || sig.hold_period_days ? (
+            <div className="flex flex-col items-center gap-0.5">
+              <span className="text-xs font-mono text-yellow-400">
+                {sig.hold_days || sig.hold_period_days}d
+              </span>
+              {sig.exit_date && (
+                <span className="text-xs text-gray-600">
+                  exit {sig.exit_date?.slice(5)}
+                </span>
+              )}
+            </div>
+          ) : '—'}
+        </td>
+
         {/* Source */}
         <td className="px-4 py-3 text-center">
           <span className={clsx('text-xs px-1.5 py-0.5 rounded',
@@ -110,11 +126,22 @@ function SignalRow({ sig, livePrice }: { sig: any; livePrice?: number }) {
         </td>
       </tr>
 
-      {/* Expanded reasoning */}
-      {expanded && sig.reasoning && (
+      {/* Expanded: dates + reasoning */}
+      {expanded && (
         <tr className="bg-[#0d1117] border-b border-[#21262d]">
-          <td colSpan={9} className="px-6 py-3">
-            <p className="text-xs text-gray-400 leading-relaxed">{sig.reasoning}</p>
+          <td colSpan={10} className="px-6 py-3 space-y-2">
+            {(sig.entry_date || sig.exit_date) && (
+              <div className="flex gap-6 text-xs">
+                <span className="text-gray-500">Enter: <span className="text-white font-mono">{sig.entry_date || '—'}</span></span>
+                <span className="text-gray-500">Exit by: <span className="text-yellow-400 font-mono">{sig.exit_date || '—'}</span></span>
+                {(sig.hold_days || sig.hold_period_days) && (
+                  <span className="text-gray-500">Hold: <span className="text-yellow-400 font-mono">{sig.hold_days || sig.hold_period_days} days</span></span>
+                )}
+              </div>
+            )}
+            {sig.reasoning && (
+              <p className="text-xs text-gray-400 leading-relaxed">{sig.reasoning}</p>
+            )}
           </td>
         </tr>
       )}
@@ -335,6 +362,9 @@ export default function LiveSignals() {
                   </th>
                   <th className="px-4 py-2.5 text-right">Exp. Return</th>
                   <th className="px-4 py-2.5 text-right">R/R</th>
+                  <th className="px-4 py-2.5 text-center">
+                    <Calendar size={11} className="inline mr-1" />Hold
+                  </th>
                   <th className="px-4 py-2.5 text-center">Source</th>
                   <th className="px-3 py-2.5" />
                 </tr>

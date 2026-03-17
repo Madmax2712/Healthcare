@@ -54,18 +54,21 @@ class TradingDecision:
     layers_passed: int            # how many of 7 layers this signal passed
     layers_total: int
     signals: Dict
-    is_high_confidence: bool      # only True when all layers strongly agree
+    is_high_confidence: bool      # only True when layers strongly agree
     why_filtered: List[str]       # reasons why signal was downgraded to HOLD
+    hold_period_days: int = 7     # estimated days to hold the position
+    entry_date: str = ""          # ISO date string — when to enter
+    exit_date: str = ""           # ISO date string — when to exit / review
 
 
 # ── Confidence thresholds ──────────────────────────────────────────────────────
-# Deliberately strict: the system trades LESS but MORE accurately
-MIN_OVERALL_CONFIDENCE = 0.72    # overall fused confidence
-MIN_SENTIMENT_STRENGTH = 0.15   # |sentiment score| must exceed this
-MIN_TECHNICAL_STRENGTH = 0.25   # |technical score| must exceed this
-MIN_ENSEMBLE_AGREEMENT = 0.75   # fraction of 5 models that must agree (>=4)
-MIN_RISK_REWARD = 1.8           # minimum risk/reward ratio
-MIN_LAYERS_REQUIRED = 5         # out of 7 layers must pass for BUY/SELL
+# Balanced: generate actionable BUY/SELL signals — was too strict (all HOLD)
+MIN_OVERALL_CONFIDENCE = 0.48    # was 0.72
+MIN_SENTIMENT_STRENGTH = 0.07   # was 0.15
+MIN_TECHNICAL_STRENGTH = 0.10   # was 0.25
+MIN_ENSEMBLE_AGREEMENT = 0.50   # was 0.75 — simple majority of 5 models
+MIN_RISK_REWARD = 1.1            # was 1.8
+MIN_LAYERS_REQUIRED = 2         # was 5 — at least 2 of 7 must agree
 
 
 class TradingAgent:
@@ -282,6 +285,22 @@ class TradingAgent:
 
         expected_return = prediction.change_pct
 
+        # Estimated hold period: strong signals → shorter (momentum), weak → longer (swing)
+        if final_action != "HOLD":
+            if confidence >= 0.80:
+                hold_days = 3   # strong — quick momentum play
+            elif confidence >= 0.65:
+                hold_days = 7   # medium — short swing
+            elif confidence >= 0.52:
+                hold_days = 14  # moderate — medium swing
+            else:
+                hold_days = 21  # weaker — longer hold needed
+        else:
+            hold_days = 0
+        from datetime import date, timedelta as td
+        entry_date = date.today().isoformat()
+        exit_date  = (date.today() + td(days=hold_days)).isoformat() if hold_days else entry_date
+
         # Build reasoning
         layer_icon = lambda ok: "✓" if ok else "✗"
         parts = [
@@ -322,6 +341,9 @@ class TradingAgent:
             risk_reward_ratio=round(rr_ratio, 4),
             layers_passed=layers_passed,
             layers_total=7,
+            hold_period_days=hold_days,
+            entry_date=entry_date,
+            exit_date=exit_date,
             is_high_confidence=is_high_confidence,
             why_filtered=why_filtered,
             signals={

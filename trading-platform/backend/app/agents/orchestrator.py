@@ -79,7 +79,7 @@ class AgentOrchestrator:
         logger.info("Agent orchestrator stopped")
 
     async def _coordination_loop(self):
-        """Main pipeline: Scanner → Signal → Risk → Executor"""
+        """Main pipeline: Scanner → Signal → Risk → Executor (every 3s)"""
         while self._running:
             try:
                 await self._run_pipeline()
@@ -87,22 +87,33 @@ class AgentOrchestrator:
                 break
             except Exception as e:
                 logger.error(f"Orchestrator pipeline error: {e}", exc_info=True)
-            await asyncio.sleep(5)
+            await asyncio.sleep(3)
 
     async def _run_pipeline(self):
         if not self._autotrading_users:
             return
 
-        # Get top opportunities from scanner
-        opportunities = self.scanner.get_top_opportunities(5)
-        if not opportunities:
-            return
-
-        # Queue top symbols for signal analysis
-        for opp in opportunities[:3]:
+        # Queue top scanner movers for priority analysis
+        scanner_opps = self.scanner.get_top_opportunities(10)
+        for opp in scanner_opps[:5]:
             self.signal.queue_symbol(opp["symbol"], opp["market"])
 
-        # Process signals for each auto-trading user
+        # Build tradeable list: ALL non-HOLD AI signals + scanner opps
+        ai_signals = self.signal.get_all_signals()
+        actionable = [s for s in ai_signals if s.get("action") in ("BUY", "SELL")]
+
+        # Also include scanner opportunities that have no AI signal yet
+        seen = {s["symbol"] for s in actionable}
+        for opp in scanner_opps:
+            if opp["symbol"] not in seen and opp.get("action") in ("BUY", "SELL"):
+                actionable.append(opp)
+                seen.add(opp["symbol"])
+
+        # Sort by confidence descending, take top 8
+        actionable.sort(key=lambda x: x.get("confidence", 0), reverse=True)
+        opportunities = actionable[:8]
+
+        # Process for each auto-trading user
         for user_id in list(self._autotrading_users):
             if not self._db_factory:
                 continue
@@ -163,14 +174,14 @@ class AgentOrchestrator:
 
         # Get preferred symbols from goal agent
         preferred = goal.get_preferred_symbols()
-        tradeable_opps = [o for o in opportunities if o["symbol"] in preferred] or opportunities[:2]
+        tradeable_opps = [o for o in opportunities if o["symbol"] in preferred] or opportunities[:5]
 
-        for opp in tradeable_opps[:2]:
+        for opp in tradeable_opps[:5]:
             symbol = opp["symbol"]
             market = opp["market"]
 
-            # Get or generate signal
-            signal = self.signal.get_signal(symbol)
+            # Use pre-vetted signal (already filtered to BUY/SELL above)
+            signal = self.signal.get_signal(symbol) or opp
             if not signal or signal.get("action") == "HOLD":
                 continue
 
