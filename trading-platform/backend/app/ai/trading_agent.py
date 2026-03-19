@@ -63,12 +63,12 @@ class TradingDecision:
 
 # ── Confidence thresholds ──────────────────────────────────────────────────────
 # Balanced: generate actionable BUY/SELL signals — was too strict (all HOLD)
-MIN_OVERALL_CONFIDENCE = 0.48    # was 0.72
-MIN_SENTIMENT_STRENGTH = 0.07   # was 0.15
-MIN_TECHNICAL_STRENGTH = 0.10   # was 0.25
-MIN_ENSEMBLE_AGREEMENT = 0.50   # was 0.75 — simple majority of 5 models
-MIN_RISK_REWARD = 1.1            # was 1.8
-MIN_LAYERS_REQUIRED = 2         # was 5 — at least 2 of 7 must agree
+MIN_OVERALL_CONFIDENCE = 0.52    # 52%+ avoids near-random signals
+MIN_SENTIMENT_STRENGTH = 0.10   # weak sentiment still ok (0.10 vs 0.15)
+MIN_TECHNICAL_STRENGTH = 0.15   # at least moderate technical signal
+MIN_ENSEMBLE_AGREEMENT = 0.55   # slight majority of 5 models must agree
+MIN_RISK_REWARD = 1.3            # reward must exceed risk by 30%
+MIN_LAYERS_REQUIRED = 3         # at least 3 of 7 layers must align
 
 
 class TradingAgent:
@@ -220,12 +220,13 @@ class TradingAgent:
         else:
             why_filtered.append(f"Ensemble split ({ensemble.buy_votes}B/{ensemble.sell_votes}S/{ensemble.hold_votes}H)")
 
-        # Compute fused score
+        # Compute fused score — use ensemble's OWN direction, not tech_score sign
+        ens_direction = 1.0 if ensemble.final_action == "BUY" else (-1.0 if ensemble.final_action == "SELL" else 0.0)
         fused_score = (
             sent_score  * self.w_sentiment +
             tech_score  * self.w_technical +
             pred_score  * self.w_prediction +
-            (ensemble.vote_agreement * np.sign(tech_score) if ensemble.final_action != "HOLD" else 0) * self.w_ensemble
+            (ensemble.vote_agreement * ens_direction) * self.w_ensemble
         )
 
         # Layer 7: Direction consensus

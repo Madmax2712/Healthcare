@@ -184,7 +184,8 @@ def build_options_signal(
     t_remaining = max(1, expiry_days - hold_days) / 365.0
     target_premium = black_scholes(target_price_stock, strike, t_remaining, r, iv,
                                    "call" if is_call else "put")
-    target_premium = max(entry_premium * 0.5, target_premium)   # at least 50% of entry
+    # Ensure target is at least +20% profit above entry (not just 50% of entry value)
+    target_premium = max(entry_premium * 1.20, target_premium)
 
     # Greeks at entry
     g = greeks(stock_price, strike, T, r, iv, "call" if is_call else "put")

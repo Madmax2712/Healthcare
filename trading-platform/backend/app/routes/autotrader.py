@@ -207,8 +207,8 @@ async def get_live_trade_signals():
     if not symbol_map:
         from app.services.live_feed import live_feed as lf
         from app.agents.signal_agent import MARKET_OF
-        raw = lf._prices if hasattr(lf, "_prices") else {}
-        for sym, state in (raw.items() if hasattr(raw, "items") else []):
+        raw = lf._states  # Dict[str, TickState]
+        for sym, state in raw.items():
             try:
                 q = lf.get_quote(sym)
                 if not q or not q.get("price"):

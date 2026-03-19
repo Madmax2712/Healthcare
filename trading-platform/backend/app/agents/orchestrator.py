@@ -219,10 +219,17 @@ class AgentOrchestrator:
                         db=db,
                     )
 
-                # Register position with monitor
+                # Only register if execution actually succeeded
+                if not result.get("success"):
+                    logger.warning(f"Execution returned failure for {symbol}: {result.get('message', 'unknown')}")
+                    continue
+
                 if action == "BUY":
                     exec_price = result.get("execution_price", 0)
                     qty = result.get("agent_trade", {}).get("quantity", 0)
+                    if not exec_price or not qty:
+                        logger.warning(f"Missing execution price/qty for {symbol}, skipping position register")
+                        continue
                     monitor.register_position(
                         symbol=symbol,
                         entry_price=exec_price,

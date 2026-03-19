@@ -95,11 +95,11 @@ class MarketScannerAgent(BaseAgent):
             signal_strength = 0.0
             signals = []
 
-            # Momentum over last 12 ticks
+            # Momentum over last 12 ticks — 0.5% threshold filters out noise
             if len(hist) >= 6:
                 momentum_1m = (hist[-1] - hist[0]) / hist[0] * 100 if hist[0] > 0 else 0
-                if abs(momentum_1m) > 0.15:
-                    signal_strength += abs(momentum_1m) * 2
+                if abs(momentum_1m) > 0.50:   # was 0.15 — 0.5% is real movement
+                    signal_strength += abs(momentum_1m) * 1.5   # was *2, de-amplified
                     signals.append(f"{'↑' if momentum_1m > 0 else '↓'} {abs(momentum_1m):.2f}% 1m momentum")
 
             # Daily move — always available

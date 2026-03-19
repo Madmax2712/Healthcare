@@ -245,7 +245,11 @@ class OptionsSimulatorAgent:
             today = date.today()
             hold_days = sig.get("hold_days", 7)
             entry_date = today.isoformat()
-            exp_ret = sig.get("expected_return_pct", abs(sig.get("change_pct", 2.0)) * 1.5)
+            # Options leverage: a 5% stock move on a ~0.5 delta ATM call ≈ 2.5% option gain
+            # per 1% stock move, but premium is ~3% of stock price → leverage ~8-15x
+            # Use signal's expected_return if available, else estimate with delta leverage
+            raw_stock_ret = sig.get("expected_return_pct") or abs(sig.get("change_pct", 2.0))
+            exp_ret = raw_stock_ret * 8.0   # rough ATM call leverage multiplier
 
             opt_sig = build_options_signal(
                 symbol=sym,
@@ -324,9 +328,10 @@ class OptionsSimulatorAgent:
 
             # Close conditions
             reason = None
+            target_gain_pct = (pos.target_premium - pos.entry_premium) / pos.entry_premium * 100
             if pos.pnl_pct <= STOP_LOSS_PCT:
                 reason = "stop_loss"
-            elif pos.pnl_pct >= pos.pnl_pct and new_prem >= pos.target_premium * 0.85:
+            elif pos.pnl_pct >= target_gain_pct * 0.85 and new_prem >= pos.target_premium * 0.85:
                 reason = "target_hit"
             elif days_rem <= 0:
                 reason = "expired"

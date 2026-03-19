@@ -316,11 +316,12 @@ class LiveFeedManager:
         while self._running:
             try:
                 ticks = {sym: state.tick() for sym, state in self._states.items()}
-                for cb in self._callbacks:
-                    try:
-                        await cb(ticks)
-                    except Exception as e:
-                        logger.error(f"LiveFeed callback error: {e}")
+                # Run all callbacks in parallel — one slow callback won't block others
+                if self._callbacks:
+                    await asyncio.gather(
+                        *[cb(ticks) for cb in self._callbacks],
+                        return_exceptions=True,
+                    )
             except Exception as e:
                 logger.error(f"LiveFeed tick error: {e}")
             await asyncio.sleep(1.0)
