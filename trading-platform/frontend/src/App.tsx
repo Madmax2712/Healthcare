@@ -11,6 +11,7 @@ import News from './pages/News'
 import AutoTrader from './pages/AutoTrader'
 import LiveSignals from './pages/LiveSignals'
 import TradingTerminal from './pages/TradingTerminal'
+import OptionsTerminal from './pages/OptionsTerminal'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import { wsService } from './services/websocket'
@@ -67,6 +68,7 @@ export default function App() {
         {/* Padded pages */}
         <Route path="/autotrader" element={<PageLayout><AutoTrader /></PageLayout>} />
         <Route path="/signals" element={<PageLayout><LiveSignals /></PageLayout>} />
+        <Route path="/options" element={<PageLayout><OptionsTerminal /></PageLayout>} />
         <Route path="/markets" element={<PageLayout><Markets /></PageLayout>} />
         <Route path="/portfolio" element={<PageLayout><Portfolio /></PageLayout>} />
         <Route path="/predictions" element={<PageLayout><Predictions /></PageLayout>} />

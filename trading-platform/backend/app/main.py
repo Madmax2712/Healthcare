@@ -20,6 +20,7 @@ from app.config import settings
 from app.database import init_db, AsyncSessionLocal
 from app.routes import auth, market, trading, predictions, news, backtest
 from app.routes import autotrader
+from app.routes import options as options_routes
 
 logging.basicConfig(
     level=logging.INFO,
@@ -122,6 +123,12 @@ async def lifespan(app: FastAPI):
     await orchestrator.start()
     logger.info("Agent orchestrator started (6 agents)")
 
+    # Start options auto-simulator
+    from app.agents.options_simulator import options_simulator
+    options_simulator.set_broadcaster(manager.broadcast)
+    await options_simulator.start()
+    logger.info("Options auto-simulator started")
+
     yield
 
     # Shutdown
@@ -129,6 +136,8 @@ async def lifespan(app: FastAPI):
     await lf.stop()
     from app.agents.orchestrator import orchestrator as orc
     await orc.stop()
+    from app.agents.options_simulator import options_simulator as opt_sim
+    await opt_sim.stop()
     logger.info("Shutdown complete")
 
 
@@ -161,6 +170,7 @@ app.include_router(predictions.router, prefix="/api")
 app.include_router(news.router, prefix="/api")
 app.include_router(backtest.router, prefix="/api")
 app.include_router(autotrader.router, prefix="/api")
+app.include_router(options_routes.router, prefix="/api")
 
 
 @app.get("/api/health")

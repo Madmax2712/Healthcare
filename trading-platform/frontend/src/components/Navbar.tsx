@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   TrendingUp, LayoutDashboard, Globe, Briefcase,
-  Newspaper, BarChart2, LogOut, User, Menu, X, Zap, Target, Bot, Radio
+  Newspaper, BarChart2, LogOut, User, Menu, X, Zap, Target, Bot, Radio, Layers
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { useAuthStore, useAutoTraderStore } from '../store'
@@ -10,6 +10,7 @@ import { useAuthStore, useAutoTraderStore } from '../store'
 const NAV_ITEMS = [
   { path: '/', label: 'Terminal', icon: LayoutDashboard },
   { path: '/signals', label: 'Live Signals', icon: Radio },
+  { path: '/options', label: 'Options', icon: Layers },
   { path: '/autotrader', label: 'AI Trader', icon: Bot },
   { path: '/markets', label: 'Markets', icon: Globe },
   { path: '/portfolio', label: 'Portfolio', icon: Briefcase },
@@ -46,6 +47,7 @@ export default function Navbar() {
           {NAV_ITEMS.map(({ path, label, icon: Icon }) => {
             const isAutoTraderNav  = path === '/autotrader'
             const isLiveSignalsNav = path === '/signals'
+            const isOptionsNav     = path === '/options'
             return (
               <Link
                 key={path}
@@ -61,6 +63,9 @@ export default function Navbar() {
                 {label}
                 {isLiveSignalsNav && (
                   <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse" />
+                )}
+                {isOptionsNav && (
+                  <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
                 )}
                 {isAutoTraderNav && isAutoTrading && (
                   <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />

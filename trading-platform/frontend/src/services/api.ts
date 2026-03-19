@@ -87,6 +87,44 @@ export const autoTraderApi = {
   trades: (limit = 50) => api.get(`/autotrader/trades?limit=${limit}`).then(r => r.data),
 }
 
+// Options Trading
+export const optionsApi = {
+  signals: (
+    sortBy: 'profit' | 'confidence' | 'iv' = 'profit',
+    action?: string,
+    market?: string,
+    minConf: number = 0.55,
+    limit: number = 80,
+  ) =>
+    api.get('/options/signals', {
+      params: {
+        sort_by: sortBy,
+        ...(action ? { action } : {}),
+        ...(market ? { market } : {}),
+        min_confidence: minConf,
+        limit,
+      },
+    }).then(r => r.data),
+
+  positions: () => api.get('/options/positions').then(r => r.data),
+  closed: (limit = 50) => api.get(`/options/closed?limit=${limit}`).then(r => r.data),
+  stats: () => api.get('/options/stats').then(r => r.data),
+
+  simulate: (data: {
+    symbol: string
+    market: string
+    option_type: 'CALL' | 'PUT'
+    stock_action: 'BUY' | 'SELL'
+    stock_price: number
+    confidence?: number
+    expected_return_pct?: number
+    hold_days?: number
+    reasoning?: string
+  }) => api.post('/options/simulate', data).then(r => r.data),
+
+  closePosition: (id: string) => api.delete(`/options/positions/${id}`).then(r => r.data),
+}
+
 // Auth
 export const authApi = {
   login: (username: string, password: string) => {
