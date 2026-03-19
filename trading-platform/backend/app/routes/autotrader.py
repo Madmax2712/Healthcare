@@ -121,61 +121,120 @@ async def get_agent_trades(
 @router.get("/live-signals")
 async def get_live_trade_signals():
     """
-    Real-time actionable trade signals (BUY/SELL) from the AI system.
-    Merges scanner opportunities + signal-agent AI analysis.
-    Also returns options recommendations for high-confidence signals.
+    Real-time actionable trade signals (BUY/SELL).
+    - Immediately populates from ALL live-feed quotes (no warm-up wait)
+    - AI deep analysis signals override simple momentum signals
+    - Also returns options recommendations for high-confidence signals.
     """
     from app.services.live_feed import live_feed
+    from datetime import date, timedelta
 
-    # Pull from both sources
-    ai_signals  = orchestrator.get_live_signals(30)
-    scanner_ops = orchestrator.get_opportunities(20)
-
-    # Merge: AI signal overrides scanner for same symbol
     symbol_map: dict = {}
-    for opp in scanner_ops:
+
+    # ── Step 1: Instant signals from every live-feed quote (available immediately) ──
+    all_quotes = live_feed.get_all_quotes() if hasattr(live_feed, "get_all_quotes") else {}
+    # (all_quotes used only as a warmup check; scanner_opps below is the primary source)
+
+    # Use scanner's cached price data for all symbols
+    scanner_opps = orchestrator.get_opportunities(50)  # get all opportunities
+    for opp in scanner_opps:
         sym = opp.get("symbol", "")
         if not sym:
             continue
         q = live_feed.get_quote(sym)
         price = (q["price"] if q else None) or opp.get("price", 0)
+        if not price:
+            continue
+        chg = opp.get("change_pct", 0) or (q.get("change_pct", 0) if q else 0)
+        action = opp.get("action", "HOLD")
+        conf   = opp.get("confidence", 0.50)
+        hold   = 7 if conf >= 0.65 else 14
+        today  = date.today()
         symbol_map[sym] = {
             "symbol": sym,
             "market": opp.get("market", "US"),
-            "action": opp.get("action", "HOLD"),
-            "confidence": opp.get("confidence", opp.get("score", 0.5)),
+            "action": action,
+            "confidence": conf,
             "price": price,
-            "change_pct": opp.get("change_pct", 0),
-            "target_price": opp.get("target_price") or round(price * 1.06, 2),
-            "stop_loss": opp.get("stop_loss") or round(price * 0.96, 2),
-            "expected_return_pct": opp.get("expected_return_pct", 0),
-            "risk_reward": opp.get("risk_reward", opp.get("risk_reward_ratio", 2.0)),
-            "reasoning": opp.get("reasoning", "Scanner momentum breakout"),
-            "source": "scanner",
-            "timestamp": opp.get("timestamp", datetime.utcnow().isoformat()),
+            "change_pct": chg,
+            "target_price": opp.get("target_price") or round(price * (1.06 if action == "BUY" else 0.94), 2),
+            "stop_loss":    opp.get("stop_loss")    or round(price * (0.96 if action == "BUY" else 1.04), 2),
+            "expected_return_pct": opp.get("expected_return_pct", round(abs(chg) * 2, 1)),
+            "risk_reward":  opp.get("risk_reward", 2.0),
+            "reasoning":    opp.get("reasoning", f"Momentum: {chg:+.2f}% daily move"),
+            "source":       "scanner",
+            "hold_days":    hold,
+            "entry_date":   today.isoformat(),
+            "exit_date":    (today + timedelta(days=hold)).isoformat(),
+            "timestamp":    opp.get("timestamp", datetime.utcnow().isoformat()),
         }
 
+    # ── Step 2: Deep AI signals override scanner signals for same symbol ──
+    ai_signals = orchestrator.get_live_signals(50)
     for sig in ai_signals:
         sym = sig.get("symbol", "")
         if not sym:
             continue
         q = live_feed.get_quote(sym)
         price = (q["price"] if q else None) or sig.get("price", 0)
+        if not price:
+            continue
+        chg  = q.get("change_pct", 0) if q else 0
+        hold = sig.get("hold_days", 7)
+        today = date.today()
+        entry = sig.get("entry_date", today.isoformat())
+        exit_d = sig.get("exit_date", (today + timedelta(days=hold)).isoformat())
         symbol_map[sym] = {
-            "symbol": sym,
-            "market": sig.get("market", "US"),
-            "action": sig.get("action", "HOLD"),
+            "symbol":    sym,
+            "market":    sig.get("market", "US"),
+            "action":    sig.get("action", "HOLD"),
             "confidence": sig.get("confidence", 0),
-            "price": price,
-            "change_pct": q.get("change_pct", 0) if q else 0,
-            "target_price": sig.get("target_price") or round(price * 1.06, 2),
-            "stop_loss": sig.get("stop_loss") or round(price * 0.96, 2),
+            "price":     price,
+            "change_pct": chg,
+            "target_price":        sig.get("target_price") or round(price * 1.06, 2),
+            "stop_loss":           sig.get("stop_loss")    or round(price * 0.96, 2),
             "expected_return_pct": sig.get("expected_return_pct", 0),
-            "risk_reward": sig.get("risk_reward", sig.get("risk_reward_ratio", 2.0)),
-            "reasoning": sig.get("reasoning", ""),
-            "source": sig.get("source", "ai_7layer"),
-            "timestamp": sig.get("timestamp", datetime.utcnow().isoformat()),
+            "risk_reward":         sig.get("risk_reward", 2.0),
+            "reasoning":           sig.get("reasoning", ""),
+            "source":              sig.get("source", "ai_7layer"),
+            "hold_days":           hold,
+            "entry_date":          entry,
+            "exit_date":           exit_d,
+            "timestamp":           sig.get("timestamp", datetime.utcnow().isoformat()),
         }
+
+    # ── Step 3: If still empty, generate momentum signals from live feed directly ──
+    if not symbol_map:
+        from app.services.live_feed import live_feed as lf
+        from app.agents.signal_agent import MARKET_OF
+        raw = lf._prices if hasattr(lf, "_prices") else {}
+        for sym, state in (raw.items() if hasattr(raw, "items") else []):
+            try:
+                q = lf.get_quote(sym)
+                if not q or not q.get("price"):
+                    continue
+                price = q["price"]
+                chg   = q.get("change_pct", 0) or 0
+                action = "BUY" if chg > 0.5 else ("SELL" if chg < -0.5 else "HOLD")
+                conf   = min(0.80, 0.45 + abs(chg) * 0.04)
+                hold   = 7
+                today  = date.today()
+                symbol_map[sym] = {
+                    "symbol": sym, "market": MARKET_OF.get(sym, "US"),
+                    "action": action, "confidence": round(conf, 2), "price": price,
+                    "change_pct": chg,
+                    "target_price": round(price * (1.05 if action == "BUY" else 0.95), 2),
+                    "stop_loss":    round(price * (0.97 if action == "BUY" else 1.03), 2),
+                    "expected_return_pct": round(abs(chg) * 2, 1),
+                    "risk_reward": 1.8, "reasoning": f"Live momentum: {chg:+.2f}% today",
+                    "source": "live_feed",
+                    "hold_days": hold,
+                    "entry_date": today.isoformat(),
+                    "exit_date": (today + timedelta(days=hold)).isoformat(),
+                    "timestamp": datetime.utcnow().isoformat(),
+                }
+            except Exception:
+                continue
 
     all_signals = sorted(symbol_map.values(), key=lambda x: x.get("confidence", 0), reverse=True)
 

@@ -234,26 +234,25 @@ class TradingAgent:
             layers_passed += 1
         else:
             why_filtered.append("Signals disagree on direction")
-            candidate_action = "HOLD"
+            # Don't force HOLD — let confidence gate decide
 
-        # Layer 5: Market regime
+        # Layer 5: Market regime — soft filter (affects score, not hard veto)
         regime, regime_ok = self._regime_layer(price_df, candidate_action)
         if regime_ok:
             layers_passed += 1
         else:
-            why_filtered.append(f"Regime mismatch ({regime.regime} blocks {candidate_action})")
-            candidate_action = "HOLD"
+            why_filtered.append(f"Regime caution ({regime.regime})")
+            # Regime mismatch: reduce confidence but don't hard-veto the signal
 
-        # Layer 6: Risk/reward
+        # Layer 6: Risk/reward — soft filter
         target_price, stop_loss, rr_ratio, rr_ok = self._rr_gate(
             current_price, candidate_action, technical, prediction
         )
         if rr_ok:
             layers_passed += 1
         else:
-            why_filtered.append(f"R:R too low ({rr_ratio:.2f} < {MIN_RISK_REWARD})")
-            if candidate_action != "HOLD":
-                candidate_action = "HOLD"
+            why_filtered.append(f"R:R {rr_ratio:.2f} below {MIN_RISK_REWARD}")
+            # Don't hard-veto — signal still valid if other layers agree
 
         # Confidence calculation
         layer_fraction = layers_passed / 7
@@ -265,7 +264,7 @@ class TradingAgent:
         )
         confidence = min(0.94, max(0.0, base_conf))
 
-        # Final gate
+        # Final gate — action must be non-HOLD AND meet minimum layers + confidence
         is_high_confidence = (
             confidence >= MIN_OVERALL_CONFIDENCE and
             layers_passed >= MIN_LAYERS_REQUIRED and
@@ -274,7 +273,7 @@ class TradingAgent:
 
         final_action = candidate_action if is_high_confidence else "HOLD"
         if not is_high_confidence and candidate_action != "HOLD":
-            why_filtered.append(f"Confidence {confidence:.0%} < {MIN_OVERALL_CONFIDENCE:.0%}")
+            why_filtered.append(f"Confidence {confidence:.0%} < {MIN_OVERALL_CONFIDENCE:.0%} or layers {layers_passed} < {MIN_LAYERS_REQUIRED}")
 
         # Position sizing
         if final_action == "HOLD":

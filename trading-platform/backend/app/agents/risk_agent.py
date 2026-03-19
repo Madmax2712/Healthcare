@@ -16,11 +16,11 @@ class RiskAgent(BaseAgent):
 
     def __init__(self):
         super().__init__(name="risk_agent", interval_seconds=15.0)
-        self.max_position_pct = 0.10      # Max 10% per position
-        self.max_daily_loss_pct = 0.03    # Stop auto-trading at 3% daily loss
-        self.max_portfolio_positions = 8  # Max concurrent positions
-        self.min_confidence = 0.60        # Minimum AI confidence to trade
-        self.max_drawdown_pct = 0.15      # Pause if >15% drawdown from peak
+        self.max_position_pct = 0.15      # Max 15% per position
+        self.max_daily_loss_pct = 0.05    # Stop auto-trading at 5% daily loss
+        self.max_portfolio_positions = 15 # Max concurrent positions
+        self.min_confidence = 0.45        # Minimum AI confidence to trade
+        self.max_drawdown_pct = 0.20      # Pause if >20% drawdown from peak
         self._daily_loss = 0.0
         self._peak_value = 0.0
         self._portfolio_value = 0.0
