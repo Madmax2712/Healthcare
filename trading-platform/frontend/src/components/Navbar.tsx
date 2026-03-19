@@ -8,12 +8,11 @@ import { clsx } from 'clsx'
 import { useAuthStore, useAutoTraderStore } from '../store'
 
 const NAV_ITEMS = [
-  { path: '/', label: 'Trade', icon: LayoutDashboard },
+  { path: '/', label: 'Terminal', icon: LayoutDashboard },
   { path: '/signals', label: 'Live Signals', icon: Radio },
   { path: '/autotrader', label: 'AI Trader', icon: Bot },
   { path: '/markets', label: 'Markets', icon: Globe },
   { path: '/portfolio', label: 'Portfolio', icon: Briefcase },
-  { path: '/predictions', label: 'AI Signals', icon: Zap },
   { path: '/news', label: 'News', icon: Newspaper },
 ]
 

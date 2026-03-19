@@ -10,6 +10,7 @@ import Accuracy from './pages/Accuracy'
 import News from './pages/News'
 import AutoTrader from './pages/AutoTrader'
 import LiveSignals from './pages/LiveSignals'
+import TradingTerminal from './pages/TradingTerminal'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import { wsService } from './services/websocket'
@@ -57,8 +58,11 @@ export default function App() {
         <Route path="/login" element={<AuthLayout><Login /></AuthLayout>} />
         <Route path="/register" element={<AuthLayout><Register /></AuthLayout>} />
 
-        {/* Full-screen trading hub */}
-        <Route path="/" element={<TradingLayout><Dashboard /></TradingLayout>} />
+        {/* Bloomberg Terminal — main landing */}
+        <Route path="/" element={<TradingLayout><TradingTerminal /></TradingLayout>} />
+
+        {/* Classic dashboard */}
+        <Route path="/dashboard" element={<TradingLayout><Dashboard /></TradingLayout>} />
 
         {/* Padded pages */}
         <Route path="/autotrader" element={<PageLayout><AutoTrader /></PageLayout>} />
